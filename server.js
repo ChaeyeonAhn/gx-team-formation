@@ -21,39 +21,33 @@ app.use(cors({
   credentials: true
 }));
 
-mongoose.connect(config.mongoURL, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log('MongoDB database connection established successfully'))
-  .catch(err => console.error('MongoDB connection error:', err));
-
-const connection = mongoose.connection;
-connection.once('open', () => {
-  console.log('MongoDB database connection established successfully');
-});
-
 // MongoDB Client for GridFS
 const client = new MongoClient(config.mongoURL);
-let gfs;
 let bucket;
 const MAX_SIZE_FOR_NORMAL_UPLOAD = 16 * 1024 * 1024; // 16 MB
 
 client.connect().then(() => {
-  const db = client.db('gx-mongo');
-  bucket = new GridFSBucket(db);
-  gfs = Grid(db, MongoClient);
-
   // Multer setup for file uploads
-  const upload = multer();
+  const upload = multer({
+    limits: { fieldSize: MAX_SIZE_FOR_NORMAL_UPLOAD }
+  });
 
   // MongoDB에 PDF 업로드
-  app.post('/upload_pdf', upload.single('file'), async (req, res) => {
+  app.post('/upload_pdf/:projectName', upload.single('file'), async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ error: 'No file part' });
     }
 
     const { fileId } = req.body;
     const pdfData = req.file.buffer;
+    const { projectName } = req.params;
 
     try {
+      
+      const db = client.db(projectName);
+      bucket = new GridFSBucket(db);
+      console.log(projectName);
+      
       if (pdfData.length > MAX_SIZE_FOR_NORMAL_UPLOAD) {
         // Use GridFS
         const uploadStream = bucket.openUploadStream(fileId, {
@@ -69,7 +63,7 @@ client.connect().then(() => {
         });
       } else {
         // Normal MongoDB storage
-        const pdfCollection = db.collection('pdf_collection_0823');
+        const pdfCollection = db.collection('PDF');
         const pdfDocument = {
           fileid: fileId,
           data: pdfData,
@@ -84,8 +78,13 @@ client.connect().then(() => {
   });
 
   // MongoDB로부터 PDF ID 리스트 받아옴
-  app.get('/list_pdfs', async (req, res) => {
-    const pdfCollection = db.collection('pdf_collection_0823');
+  app.get('/list_pdfs/:projectName', async (req, res) => {
+    const { projectName } = req.params;
+
+    const db = client.db(projectName);
+    bucket = new GridFSBucket(db);
+
+    const pdfCollection = db.collection('PDF');
     const pdfDocuments = await pdfCollection.find({}).toArray();
 
     const fileidList = pdfDocuments.map(doc => doc.fileid);
@@ -100,12 +99,15 @@ client.connect().then(() => {
   });
 
   // MongoDB에서 각 fileid에 해당하는 PDF 다운로드
-  app.get('/download_pdf/:fileid', async (req, res) => {
-    const { fileid } = req.params;
+  app.get('/download_pdf/:projectName/:fileid', async (req, res) => {
+    const { projectName, fileid } = req.params;
 
     try {
+      const db = client.db(projectName);
+      bucket = new GridFSBucket(db);
+      
       // Check in normal MongoDB storage
-      const pdfCollection = db.collection('pdf_collection_0823');
+      const pdfCollection = db.collection('PDF');
       const pdfDocument = await pdfCollection.findOne({ fileid });
 
       if (pdfDocument) {
@@ -171,6 +173,31 @@ const dataSchema = new mongoose.Schema({
     z: Number
   },
   textValue: String,
+  paperName: String,
+  year: String,
+  resourceLink: String,
+  publicationVenue: String,
+  SemanticScholarId: String,
+  citesId: String,
+  citationCount: String,
+  referenceTitleList: {
+    key: [String],
+    value: [{
+      array: [String]
+    }]
+  },
+  citationTitleList: {
+    key: [String],
+    value: [{
+      array: [String]
+    }]
+  },
+  abovePageIndex: Number,
+  referenceTextArray: [String],
+  highlightTexts: [{
+    item1: [Number],
+    item2: [Number]
+  }],
   paperIndex: Number,
   color: {
     r: Number,
@@ -183,10 +210,39 @@ const dataSchema = new mongoose.Schema({
   endPaperId: String
 }, { versionKey: false });
 
-const Data = mongoose.model('Data', dataSchema, 'test');
+async function connectToDatabase(dbName) {
+  const uri = `${config.mongoURL}/${dbName}`; // MongoDB URI (자신의 설정에 맞게 수정)
+
+  try {
+    // Check if the mongoose connection is active (connected or connecting)
+    if (mongoose.connection.readyState !== 0) {
+      if (mongoose.connection.db.databaseName !== dbName) {
+        console.log('Closing existing MongoDB connection...');
+        await mongoose.connection.close();
+        console.log('Existing connection closed.');
+      } else {
+        console.log('Existing connection is same as new database.');
+      }
+    }
+  } catch (error) {
+    console.error('Error while closing the existing MongoDB connection:', error);
+    throw error;  // Optionally rethrow the error if it should be handled by the caller
+  }
+  try {
+    await mongoose.connect(uri, { useNewUrlParser: true, useUnifiedTopology: true });
+    console.log(`Connected to database: ${dbName}`);
+  } catch (err) {
+    console.error('MongoDB connection error:', err);
+    throw err;  // Optionally rethrow the error if it should be handled by the caller
+  }
+};
+
 
 app.get("/load-data", async (req, res) => {
   try {
+    await connectToDatabase(req.body._projectName);
+    const Data = mongoose.model('Data', dataSchema, 'SaveFile');
+
     const data = await Data.find();
     res.status(200).json(data);
   } catch (error) {
@@ -201,6 +257,9 @@ app.post("/upload-data", async (req, res) => {
     delete data._id;
   }
   try {
+    await connectToDatabase(data._projectName);
+    const Data = mongoose.model('Data', dataSchema, 'SaveFile');
+
     const newData = await Data.create(data);
     res.status(201).json(newData);
     console.log('Data uploaded successfully.');
@@ -211,28 +270,44 @@ app.post("/upload-data", async (req, res) => {
 });
 
 app.post("/update-data", async (req, res) => {
-  const { _id, type, pos, textValue, paperIndex, color, noteType, startPaperId, endPaperId } = req.body;
+  const { _projectName, _id, type, pos, textValue, paperName, year, resourceLink, publicationVenue, SemanticScholarId, citesId, citationCount, referenceTitleList, citationTitleList, abovePageIndex, referenceTextArray, highlightTexts, copiedOrigianlPaperId, paperIndex, color, noteType, startPaperId, endPaperId } = req.body;
   try {
-    console.log(req.body);
+    await connectToDatabase(_projectName);
+    const Data = mongoose.model('Data', dataSchema, 'SaveFile');
+
     const update = {};
     if (type !== "") update.type = type;
     if (pos.x !== 0 || pos.y !== 0 || pos.z !== 0) update.pos = pos;
     update.textValue = textValue;
-    if (paperIndex !== 0) update.paperIndex = paperIndex;
+    if (paperName !== "") update.paperName = paperName;
+    if (year !== "") update.year = year;
+    if (resourceLink !== "") update.resourceLink = resourceLink;
+    if (publicationVenue !== "") update.publicationVenue = publicationVenue;
+    if (SemanticScholarId !== "") update.SemanticScholarId = SemanticScholarId;
+    if (citesId !== "") update.citesId = citesId;
+    if (citationCount !== "") update.citationCount = citationCount;
+    if (referenceTitleList !== null && referenceTitleList.key.length !== 0) update.referenceTitleList = referenceTitleList;
+    if (citationTitleList !== null && citationTitleList.key.length !== 0) update.citationTitleList = citationTitleList;
+    update.abovePageIndex = abovePageIndex;
+    if (referenceTextArray !== null && referenceTextArray.length !== 0) update.referenceTextArray = referenceTextArray;
+    if (highlightTexts !== null && highlightTexts.length !== 0) update.highlightTexts = highlightTexts;
+    if (copiedOrigianlPaperId !== "") update.copiedOrigianlPaperId = copiedOrigianlPaperId;
+    update.paperIndex = paperIndex;
     if (color.r !== 0 || color.g !== 0 || color.b !== 0 || color.a !== 0) update.color = color;
     if (noteType !== "") update.noteType = noteType;
     if (startPaperId !== "") update.startPaperId = startPaperId;
     if (endPaperId !== "") update.endPaperId = endPaperId;
 
-    console.log(update);
+    try {
+      const updatedData = await Data.findOneAndUpdate({ _id: _id }, { $set: update }, { new: true });
 
-    const updatedData = await Data.findOneAndUpdate({ _id: _id }, { $set: update }, { new: true });
-
-    if (!updatedData) {
-      return res.status(404).json({ status: 'error', message: 'Data not found' });
+      if (!updatedData) {
+        return res.status(404).json({ status: 'error', message: 'Data not found' });
+      }
+      res.status(200).json({ status: 'ok', message: 'Data updated successfully' });
+    } catch (error) {
+      return res.status(404).json({ status: 'error', message: 'Id not found' });
     }
-
-    res.status(200).json({ status: 'ok', message: 'Data updated successfully' });
   } catch (error) {
     console.error('Failed to update data:', error);
     res.status(500).json({ status: 'error', message: 'Failed to update data', data: error });
@@ -240,9 +315,12 @@ app.post("/update-data", async (req, res) => {
 });
 
 app.post("/delete-data", async (req, res) => {
-  const { _id } = req.body;
+  const { _projectName, _id } = req.body;
 
   try {
+    await connectToDatabase(_projectName);
+    const Data = mongoose.model('Data', dataSchema, 'SaveFile');
+
     if (!mongoose.Types.ObjectId.isValid(_id)) {
       return res.status(400).json({ status: 'error', message: 'Invalid ID format' });
     }
