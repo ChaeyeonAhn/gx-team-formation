@@ -177,7 +177,7 @@ const dataSchema = new mongoose.Schema({
   year: String,
   resourceLink: String,
   publicationVenue: String,
-  SemanticScholarId: String,
+  resultId: String,
   citesId: String,
   citationCount: String,
   referenceTitleList: {
@@ -207,7 +207,11 @@ const dataSchema = new mongoose.Schema({
   },
   noteType: String,
   startPaperId: String,
-  endPaperId: String
+  endPaperId: String,
+  labelPosIndex: {
+    item1: Number,
+    item2: Number
+  }
 }, { versionKey: false });
 
 async function connectToDatabase(dbName) {
@@ -270,7 +274,7 @@ app.post("/upload-data", async (req, res) => {
 });
 
 app.post("/update-data", async (req, res) => {
-  const { _projectName, _id, type, pos, textValue, paperName, year, resourceLink, publicationVenue, SemanticScholarId, citesId, citationCount, referenceTitleList, citationTitleList, abovePageIndex, referenceTextArray, highlightTexts, copiedOrigianlPaperId, paperIndex, color, noteType, startPaperId, endPaperId } = req.body;
+  const { _projectName, _id, type, pos, textValue, paperName, year, resourceLink, publicationVenue, resultId, citesId, citationCount, referenceTitleList, citationTitleList, abovePageIndex, referenceTextArray, highlightTexts, copiedOrigianlPaperId, paperIndex, color, noteType, startPaperId, endPaperId, labelPosIndex } = req.body;
   try {
     await connectToDatabase(_projectName);
     const Data = mongoose.model('Data', dataSchema, 'SaveFile');
@@ -283,7 +287,7 @@ app.post("/update-data", async (req, res) => {
     if (year !== "") update.year = year;
     if (resourceLink !== "") update.resourceLink = resourceLink;
     if (publicationVenue !== "") update.publicationVenue = publicationVenue;
-    if (SemanticScholarId !== "") update.SemanticScholarId = SemanticScholarId;
+    if (resultId !== "") update.resultId = resultId;
     if (citesId !== "") update.citesId = citesId;
     if (citationCount !== "") update.citationCount = citationCount;
     if (referenceTitleList !== null && referenceTitleList.key.length !== 0) update.referenceTitleList = referenceTitleList;
@@ -297,6 +301,7 @@ app.post("/update-data", async (req, res) => {
     if (noteType !== "") update.noteType = noteType;
     if (startPaperId !== "") update.startPaperId = startPaperId;
     if (endPaperId !== "") update.endPaperId = endPaperId;
+    update.labelPosIndex = labelPosIndex;
 
     try {
       const updatedData = await Data.findOneAndUpdate({ _id: _id }, { $set: update }, { new: true });
