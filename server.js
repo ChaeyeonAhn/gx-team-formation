@@ -309,6 +309,8 @@ app.post("/update-data", async (req, res) => {
     if (endPaperId !== "") update.endPaperId = endPaperId;
     update.labelPosIndex = labelPosIndex;
 
+    console.log(update.highlightTexts);
+
     try {
       const updatedData = await Data.findOneAndUpdate({ _id: _id }, { $set: update }, { new: true });
 
