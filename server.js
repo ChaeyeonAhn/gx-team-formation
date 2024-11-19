@@ -196,7 +196,13 @@ const dataSchema = new mongoose.Schema({
   referenceTextArray: [String],
   highlightTexts: [{
     item1: [Number],
-    item2: [Number]
+    item2: [Number],
+    item3: {
+      r: Number,
+      g: Number,
+      b: Number,
+      a: Number
+    },
   }],
   paperIndex: Number,
   color: {
