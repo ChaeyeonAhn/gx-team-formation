@@ -248,7 +248,7 @@ async function connectToDatabase(dbName) {
 };
 
 
-app.get("/load-data", async (req, res) => {
+app.post("/load-data", async (req, res) => {
   try {
     await connectToDatabase(req.body._projectName);
     const Data = mongoose.model('Data', dataSchema, 'SaveFile');
