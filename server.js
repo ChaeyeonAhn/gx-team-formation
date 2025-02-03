@@ -217,7 +217,8 @@ const dataSchema = new mongoose.Schema({
   labelPosIndex: {
     item1: Number,
     item2: Number
-  }
+  },
+  scaleFactor: Number,
 }, { versionKey: false });
 
 async function connectToDatabase(dbName) {
@@ -280,7 +281,7 @@ app.post("/upload-data", async (req, res) => {
 });
 
 app.post("/update-data", async (req, res) => {
-  const { _projectName, _id, type, pos, textValue, paperName, year, resourceLink, publicationVenue, resultId, citesId, citationCount, referenceTitleList, citationTitleList, abovePageIndex, referenceTextArray, highlightTexts, copiedOrigianlPaperId, paperIndex, color, noteType, startPaperId, endPaperId, labelPosIndex } = req.body;
+  const { _projectName, _id, type, pos, textValue, paperName, year, resourceLink, publicationVenue, resultId, citesId, citationCount, referenceTitleList, citationTitleList, abovePageIndex, referenceTextArray, highlightTexts, copiedOrigianlPaperId, paperIndex, color, noteType, startPaperId, endPaperId, labelPosIndex, scaleFactor } = req.body;
   try {
     await connectToDatabase(_projectName);
     const Data = mongoose.model('Data', dataSchema, 'SaveFile');
@@ -308,8 +309,9 @@ app.post("/update-data", async (req, res) => {
     if (startPaperId !== "") update.startPaperId = startPaperId;
     if (endPaperId !== "") update.endPaperId = endPaperId;
     update.labelPosIndex = labelPosIndex;
+    update.scaleFactor = scaleFactor;
 
-    console.log(update.highlightTexts);
+    // console.log(update.highlightTexts);
 
     try {
       const updatedData = await Data.findOneAndUpdate({ _id: _id }, { $set: update }, { new: true });
