@@ -243,8 +243,8 @@ app.post("/update-data", async (req, res) => {
       console.log(keysWithDifferentValue);
       console.log(clients);
 
-      for (key in keysWithDifferentValue) {
-        const wsClient = clients.get(key);
+      for (i = 0; i < keysWithDifferentValue.length; i++) {
+        const wsClient = clients.get(keysWithDifferentValue[i]);
         console.log(key);
         console.log(wsClient);
         if (wsClient && wsClient.readyState === WebSocket.OPEN) {
