@@ -1,5 +1,5 @@
 const config = {
-  origin: "http://192.168.50.97:3000", // client가 현재 서버 돌아가고 있는 desktop의 IP:3000에 연결할 때 씀.
+  origin: "http://34.135.9.196:3000", // client가 현재 서버 돌아가고 있는 desktop의 IP:3000에 연결할 때 씀.
   port: 5002, // Express 서버 포트
   wsPort: 751, // WebSocket 서버 포트
   mongoURL:

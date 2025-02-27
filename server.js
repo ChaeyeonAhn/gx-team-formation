@@ -240,6 +240,8 @@ app.post("/update-data", async (req, res) => {
         }
       });
 
+      console.log(keysWithDifferentValue);
+
       for (key in keysWithDifferentValue) {
         const wsClient = clients.get(key);
         if (wsClient && wsClient.readyState === WebSocket.OPEN) {
