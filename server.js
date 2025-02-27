@@ -243,6 +243,9 @@ app.post("/update-data", async (req, res) => {
       console.log(keysWithDifferentValue);
       console.log(clients);
 
+      const updatedData = await SNData.find({});
+      const extractedData = foundData[0].data;
+
       for (i = 0; i < keysWithDifferentValue.length; i++) {
         const wsClient = clients.get(keysWithDifferentValue[i]);
         console.log(keysWithDifferentValue[i]);
@@ -252,7 +255,7 @@ app.post("/update-data", async (req, res) => {
             JSON.stringify({
               clientId: keysWithDifferentValue[i],
               type: "REFRESHED",
-              data: data[0].data,
+              data: extractedData,
             })
           ); // send refreshed message to the clients
           userStatus.set(keysWithDifferentValue[i], { status: newStatus });
