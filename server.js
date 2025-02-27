@@ -291,6 +291,8 @@ app.post("/update-data", async (req, res) => {
 
       for (key in keysWithDifferentValue) {
         const wsClient = clients.get(key);
+        console.log(key);
+        console.log(wsClient);
         if (wsClient && wsClient.readyState === WebSocket.OPEN) {
           wsClient.send(
             JSON.stringify({
