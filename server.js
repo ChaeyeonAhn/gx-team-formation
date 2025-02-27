@@ -245,17 +245,17 @@ app.post("/update-data", async (req, res) => {
 
       for (i = 0; i < keysWithDifferentValue.length; i++) {
         const wsClient = clients.get(keysWithDifferentValue[i]);
-        console.log(key);
+        console.log(keysWithDifferentValue[i]);
         console.log(wsClient);
         if (wsClient && wsClient.readyState === WebSocket.OPEN) {
           wsClient.send(
             JSON.stringify({
-              clientId: key,
+              clientId: keysWithDifferentValue[i],
               type: "REFRESHED",
               data: data[0].data,
             })
           ); // send refreshed message to the clients
-          userStatus.set(key, { status: newStatus });
+          userStatus.set(keysWithDifferentValue[i], { status: newStatus });
           console.log(userStatus);
         } else {
           console.log("ws client not found for username");
