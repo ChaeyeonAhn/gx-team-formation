@@ -90,6 +90,8 @@ const dataSchema = new mongoose.Schema({
         y: Number,
         z: Number,
       },
+      noteTime: String,
+      noteWriter: String,
     },
   ],
 });
