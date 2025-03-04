@@ -148,18 +148,6 @@ app.post("/register-user", async (req, res) => {
       mongoose.model("StickyNotes", dataSchema, "stickyNotes");
     const data = await SNData.find({});
     console.log("data" + data.length);
-    // data.forEach(({ _id, data }) => {
-    //   console.log(`문서 ID: ${_id}`);
-    //   console.log(data[0]);
-
-    //   data.forEach(({ noteId, noteText, notePos }) => {
-    //     console.log(`  noteId: ${noteId}`);
-    //     console.log(`  noteText: ${noteText}`);
-    //     console.log(
-    //       `  notePos: x=${notePos.x}, y=${notePos.y}, z=${notePos.z}`
-    //     );
-    //   });
-    // });
 
     console.log(data[0].data);
 
@@ -182,25 +170,10 @@ app.post("/register-user", async (req, res) => {
 });
 
 // chacha
-// app.post("/load-data", async (req, res) => {
-//   try {
-//     // await connectToDatabase();
-//     const SNData = mongoose.model("StickyNotes", dataSchema, "stickyNotes");
-
-//     const data = await SNData.find();
-//     res.status(200).json(data);
-//   } catch (error) {
-//     console.error("Failed to load data:", error);
-//     res
-//       .status(500)
-//       .json({ status: "error", message: "Failed to load data", data: error });
-//   }
-// });
-
-// chacha
 app.post("/update-data", async (req, res) => {
   console.log("update data!");
-  const { clientId, noteId, noteText, notePos } = req.body;
+  const { clientId, noteId, noteText, notePos, noteTime, noteWriter } =
+    req.body;
 
   if (!userList.has(clientId)) {
     return res.status(409).json({ error: "Unknown client." });
@@ -219,7 +192,7 @@ app.post("/update-data", async (req, res) => {
 
     if (!noteExists) {
       // new note!
-      firstData.push({ noteId, noteText, notePos });
+      firstData.push({ noteId, noteText, notePos, noteTime, noteWriter });
 
       await SNData.deleteMany();
       const newDoc = new SNData({ data: firstData });
@@ -273,7 +246,7 @@ app.post("/update-data", async (req, res) => {
       });
     } else {
       const remainingData = firstData.filter((e) => e.noteId !== noteId);
-      remainingData.push({ noteId, noteText, notePos });
+      remainingData.push({ noteId, noteText, notePos, noteTime, noteWriter });
 
       await SNData.deleteMany();
       const newDoc = new SNData({ data: firstData });
