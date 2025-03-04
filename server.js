@@ -192,7 +192,13 @@ app.post("/update-data", async (req, res) => {
 
     if (!noteExists) {
       // new note!
-      firstData.push({ noteId, noteText, notePos, noteTime, noteWriter });
+      firstData.push({
+        noteId,
+        noteText,
+        notePos,
+        noteTime,
+        noteWriter: "Chaeyeon",
+      }); // last one should be noteWriter
 
       await SNData.deleteMany();
       const newDoc = new SNData({ data: firstData });
